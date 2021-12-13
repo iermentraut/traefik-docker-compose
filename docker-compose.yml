@@ -1,0 +1,58 @@
+---
+version: "3.8"
+
+networks:
+    traefik:
+        name: traefik
+        external: true
+        
+services:
+    traefik:
+        hostname: traefik
+        container_name: traefik
+        image: index.docker.io/traefik:v2.4.5
+        restart: unless-stopped
+        command:
+            - --accessLog=true
+            - --global.sendAnonymousUsage=false
+            - --global.checkNewVersion=false
+            - --log.level=ERROR
+            - --providers.docker=true
+            - --providers.docker.swarmMode=false
+            - --providers.docker.exposedByDefault=false
+            - --providers.docker.network=traefik
+            - --providers.docker.watch=true
+            - --providers.docker.endpoint=unix:///var/run/docker.sock
+
+            ## Port 80
+            - --entrypoints.web.address=:80
+            - --entrypoints.web.http.tls=false
+            - --entrypoints.web.http.redirections.entrypoint.permanent=true
+            - --entrypoints.web.http.redirections.entrypoint.scheme=https
+            - --entrypoints.web.http.redirections.entrypoint.to=websecure
+
+            ## Port 443
+            - --entrypoints.websecure.address=:443
+            - --entrypoints.websecure.http.tls=true
+
+            ## Dashboard
+            - --api.insecure=false
+            - --api.dashboard=false
+        networks:
+            traefik: {}
+        labels:
+            traefik.enable: "false"
+        ports:
+            -   published: 80
+                target: 80
+                protocol: tcp
+                mode: host
+            -   published: 443
+                target: 443
+                protocol: tcp
+                mode: host
+        volumes:
+            -   read_only: true
+                source: /var/run/docker.sock
+                target: /var/run/docker.sock
+                type: bind
